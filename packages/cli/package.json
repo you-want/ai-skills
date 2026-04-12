@@ -1,0 +1,14 @@
+{
+  "name": "ai-skills-cli",
+  "version": "0.0.1",
+  "bin": {
+    "ai-skills": "dist/index.js"
+  },
+  "dependencies": {
+    "@ai-skills/core": "workspace:*",
+    "@ai-skills/ship-safe": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

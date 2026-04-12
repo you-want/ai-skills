@@ -1,0 +1,25 @@
+{
+  "name": "ai-skills",
+  "private": true,
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "pnpm -r dev",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r --if-present test"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^5.4.0"
+  },
+  "keywords": [
+    "ai-skills",
+    "skills",
+    "ai"
+  ],
+  "author": "Rain9",
+  "license": "ISC",
+  "packageManager": "pnpm@10.32.1"
+}
