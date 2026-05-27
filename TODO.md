@@ -6,17 +6,12 @@
 
 ## 🔴 高优先级
 
-### 1. 基础配置完善
-- [ ] 添加 LICENSE 文件（MIT 协议）
-- [ ] 添加 GitHub Actions CI 配置
-- [ ] 添加 `.gitignore` 文件
-
-### 2. 技能实现
+### 1. 技能实现
 - [ ] 实现 `vue-code-review` 可执行技能
 - [ ] 实现 `vue-code-generation` 可执行技能
 - [ ] 实现 `frontend-design` 可执行技能
 
-### 3. 测试覆盖
+### 2. 测试覆盖
 - [ ] 完善 `ship-safe` 测试用例
 - [ ] 添加 `core` 模块单元测试
 - [ ] 添加 `cli` 模块集成测试
@@ -90,7 +85,7 @@
 | vue-code-review 技能 | 0% | - | - |
 | vue-code-generation 技能 | 0% | - | - |
 | 测试覆盖 | 20% | - | - |
-| CI/CD | 0% | - | - |
+| CI/CD | 100% | - | 已完成 |
 
 ---
 

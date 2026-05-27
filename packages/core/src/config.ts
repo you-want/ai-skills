@@ -24,7 +24,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function mergeRecords<T extends Record<string, unknown>>(base: T, override: Record<string, unknown>): T {
+function mergeRecords(base: Record<string, unknown>, override: Record<string, unknown>): Record<string, unknown> {
   const next: Record<string, unknown> = { ...base }
 
   for (const [key, value] of Object.entries(override)) {
@@ -38,7 +38,7 @@ function mergeRecords<T extends Record<string, unknown>>(base: T, override: Reco
     next[key] = value
   }
 
-  return next as T
+  return next
 }
 
 async function readConfigFile(configFilePath: string): Promise<AiSkillsConfig> {
@@ -81,5 +81,6 @@ export async function loadConfig(options: LoadConfigOptions): Promise<AiSkillsCo
   }
 
   const loaded = await readConfigFile(resolvedConfigPath)
-  return mergeRecords(defaultConfig, loaded as Record<string, unknown>)
+  const merged = mergeRecords(defaultConfig as Record<string, unknown>, loaded as Record<string, unknown>)
+  return merged as AiSkillsConfig
 }

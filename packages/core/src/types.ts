@@ -12,11 +12,10 @@ export interface ShipSafeSkillConfig {
   requireMatchingTestsForChangedFiles?: boolean
 }
 
+export type SkillConfig = ShipSafeSkillConfig & Record<string, unknown>
+
 export interface AiSkillsConfig {
-  skills?: {
-    'ship-safe'?: ShipSafeSkillConfig
-    [skillName: string]: Record<string, unknown> | undefined
-  }
+  skills?: Record<string, SkillConfig>
 }
 
 export type SkillCheckStatus = 'pass' | 'warn' | 'fail'

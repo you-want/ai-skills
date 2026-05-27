@@ -65,5 +65,6 @@ async function loadConfig(options) {
         return exports.defaultConfig;
     }
     const loaded = await readConfigFile(resolvedConfigPath);
-    return mergeRecords(exports.defaultConfig, loaded);
+    const merged = mergeRecords(exports.defaultConfig, loaded);
+    return merged;
 }

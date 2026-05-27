@@ -1,58 +1,27 @@
 # AI Skills Engine
 
-一个 **可扩展的 AI 技能引擎框架**，让 AI 助手理解并执行你的团队规范。
+一个 **可扩展的 AI 技能引擎**，让 AI 助手理解并执行你的团队规范。
 
 ## 🎯 项目简介
 
-AI Skills Engine 是一个可扩展的技能框架，通过将团队规范编写成 AI 可读的 `SKILL.md` 文档，让 AI 助手能够根据规范自动生成或审查代码。
+AI Skills Engine 是一个技能引擎框架，提供：
 
-**核心能力**：
-- 📚 **规范文档化**: 将团队规范编写成 AI 可读的技能文档
-- 🤖 **AI 驱动**: 让 AI 助手根据规范自动生成或审查代码
-- ✅ **自动化检查**: 提供命令行工具进行自动化质量检查
-- 🔌 **高度可扩展**: 轻松添加新的技能，支持任意技术栈和场景
-- 🔄 **CI/CD 集成**: 可以集成到 CI/CD 流程中
+- � **技能加载器**: 自动发现和加载 `skills/` 目录中的技能文档
+- ⚙️ **技能运行器**: 执行技能并生成结构化的检查报告
+- 🛠️ **命令行工具**: 支持 CI/CD 集成和自动化检查
+- 📦 **技能开发框架**: 轻松创建新的可执行技能
 
-## 💡 项目初衷
-
-### 解决的核心问题
-
-**1. AI 助手缺乏团队规范知识**
-- AI 不知道团队的编码规范和最佳实践
-- 每次都需要重复说明规范要求
-- 生成的内容不符合团队标准
-
-**2. 规范文档难以落地执行**
-- 规范文档写好了，但没人主动查阅
-- 新成员学习成本高，上手慢
-- 缺乏自动化的规范执行机制
-
-**3. 知识传承效率低**
-- 团队经验散落在各处，难以系统化
-- 资深成员的经验和实践难以传递给新人
-- 同样的错误反复出现
-
-### 解决方案
-
-将代码规范编写成 AI 可读的 `SKILL.md` 文档，让 AI 助手根据规范生成或审查代码。
+**核心思路**：将团队规范编写成 AI 可读的 `SKILL.md` 文档，引擎负责加载和执行，让 AI 助手根据规范工作。
 
 ```
-规范文档 (SKILL.md) 
+skills/ (你的技能仓库)
     ↓
-AI 读取并理解规范
+技能引擎加载
     ↓
-自动生成/审查代码
+AI 助手根据规范工作
     ↓
-符合团队标准的代码
+符合团队标准的产出
 ```
-
-## ✨ 特性
-
-- **可扩展架构**: 轻松添加新的技能，支持任意技术栈
-- **多级别检查**: P0（必须修复）、P1（应该修复）、P2（建议优化）
-- **详细报告**: 提供清晰的检查报告和改进建议
-- **灵活使用**: 可作为 AI 助手文档或命令行工具
-- **开箱即用**: 内置常用技能，可直接使用或自定义
 
 ## 📁 项目结构
 
@@ -61,80 +30,104 @@ ai-skills/
 ├── packages/
 │   ├── cli/              # 命令行接口
 │   ├── core/             # 技能引擎核心
-│   │   ├── run.ts        # 技能运行器
 │   │   ├── load-skills.ts # 技能加载器
+│   │   ├── run.ts        # 技能运行器
+│   │   ├── config.ts     # 配置管理
 │   │   └── types.ts      # 类型定义
 │   └── skills/
-│       └── ship-safe/    # 发布安全检查技能
-├── skills/               # 技能描述文档（可扩展）
-│   ├── frontend-design/  # 前端设计规范
-│   ├── vue-code-generation/ # Vue 代码生成规范
-│   └── vue-code-review/  # Vue 代码审查规范
-├── configs/              # 配置文件
-└── dist/                 # 构建产物
+│       └── ship-safe/    # 内置技能示例
+├── skills/               # 技能仓库（你的规范文档）
+└── configs/              # 配置文件
 ```
 
-## 📖 使用手册
+## ✨ 核心能力
 
-### 方式一：AI 助手使用（主要使用方式）
+### 1. 技能加载器 (`load-skills.ts`)
 
-**核心思路**：让 AI 读取 `skills/` 目录中的规范文档，然后根据规范生成或审查代码。
+自动扫描 `skills/` 目录，发现并加载所有技能文档。
 
-#### 1. 代码生成
+```typescript
+import { loadAllSkills } from '@ai-skills/core'
 
-**步骤 1**: 告诉 AI 使用哪个技能文档
+// 加载所有技能
+const skills = await loadAllSkills()
 
-```
-用户：请读取 skills/vue-code-generation/SKILL.md 中的规范
-```
-
-**步骤 2**: 描述你的需求
-
-```
-用户：帮我生成一个 Vue 3 用户列表组件，包含分页功能
+// 获取技能列表
+for (const skill of Object.values(skills)) {
+  console.log(skill.name, skill.description)
+}
 ```
 
-**步骤 3**: AI 会根据规范生成符合要求的代码
+### 2. 技能运行器 (`run.ts`)
 
-#### 2. 代码审查
+执行技能并生成结构化的检查报告。
 
-**步骤 1**: 准备待审查的代码
+```typescript
+import { runSkill } from '@ai-skills/core'
 
-```vue
-<script setup lang="ts">
-const list = ref([])
-</script>
+// 运行技能
+const result = await runSkill(skill, context, {
+  output: 'text' // 或 'silent'
+})
+
+// 检查结果
+console.log(result.passed)   // 是否通过
+console.log(result.score)    // 评分 0-100
+console.log(result.issues)    // 问题列表
+console.log(result.suggestions) // 建议列表
 ```
 
-**步骤 2**: 让 AI 读取审查规范并审查代码
+### 3. 命令行工具 (`cli`)
 
+提供交互式命令行界面。
+
+```bash
+# 查看所有可用技能
+ai-skills list
+
+# 运行特定技能
+ai-skills run <skill-name>
+
+# 指定项目路径
+ai-skills run <skill-name> --project /path/to/project
+
+# JSON 格式输出
+ai-skills run <skill-name> --json
 ```
-用户：请读取 skills/vue-code-review/SKILL.md，然后审查这段代码
+
+### 4. 技能开发框架
+
+创建新的可执行技能非常简单：
+
+```typescript
+import type { Skill, SkillContext, SkillResult } from '@ai-skills/core'
+
+const mySkill: Skill = {
+  name: 'my-skill',
+  description: '我的自定义技能',
+  run: async (ctx: SkillContext): Promise<SkillResult> => {
+    // 实现技能逻辑
+    return {
+      passed: true,
+      score: 100,
+      summary: '检查完成',
+      issues: [],
+      suggestions: []
+    }
+  }
+}
+
+export default mySkill
 ```
 
-**步骤 3**: AI 会输出检查结果
+## 🚀 快速开始
 
-```
-P0: 缺少 TypeScript 类型定义
-P1: 组件未使用 defineOptions 定义名称
-P2: 建议添加单元测试
-```
+### 环境要求
 
-#### 3. 常用技能选择
+- Node.js >= 18.x
+- pnpm >= 8.x
 
-| 你的需求 | 使用的技能文档 |
-|----------|---------------|
-| 生成 Vue 代码 | `skills/vue-code-generation/SKILL.md` |
-| 审查 Vue 代码 | `skills/vue-code-review/SKILL.md` |
-| 发布前检查 | 运行 `ship-safe` 命令行工具 |
-| 检查前端设计 | `skills/frontend-design/SKILL.md` |
-| 其他场景 | 查看 `skills/` 目录获取更多技能 |
-
-### 方式二：命令行工具使用
-
-**适用场景**：自动化检查、CI/CD 集成
-
-#### 安装
+### 安装
 
 ```bash
 # 克隆项目
@@ -144,11 +137,11 @@ cd ai-skills
 # 安装依赖
 pnpm install
 
-# 构建
+# 构建项目
 pnpm build
 ```
 
-#### 基本命令
+### 基本使用
 
 ```bash
 # 查看帮助
@@ -157,62 +150,131 @@ pnpm run cli help
 # 列出所有可用技能
 pnpm run cli list
 
-# 运行特定技能
+# 运行技能
 pnpm run cli run ship-safe
-
-# 运行所有技能
-pnpm run cli run all
 
 # 指定项目路径
 pnpm run cli run ship-safe --project /path/to/your/project
-
-# 输出 JSON 格式
-pnpm run cli run ship-safe --json
-
-# 指定变更文件
-pnpm run cli run ship-safe --changed src/app.ts,test/app.test.ts
 ```
 
-#### 运行示例
+### 集成到项目
+
+在你的项目中引用 ai-skills 引擎：
+
+```typescript
+import { loadAllSkills, runSkill } from 'ai-skills'
+
+const skills = await loadAllSkills('/path/to/your/skills')
+const result = await runSkill(skills['my-skill'], {
+  projectPath: '/path/to/project'
+})
+```
+
+## 🔧 本地调试
+
+### 开发模式
 
 ```bash
-# 运行 ship-safe 检查
-pnpm run cli run ship-safe
+# 启动开发模式（监听文件变化自动重建）
+pnpm dev
 
-# 输出示例：
-# ship-safe
-# ───────────
-# Status   🟢 PASS
-# Score    95/100
-# Project  /path/to/project
-# 
-# Checks
-# - test-script        PASS (120ms)
-# - repo-tests         PASS (45ms)
-# - command:lint       PASS (890ms)
-# 
-# No issues found.
+# 或使用 tsc 监听模式
+pnpm build --watch
 ```
 
-#### 配置文件
+### 调试技能
 
-在项目根目录创建 `.ai-skills.config.json`：
+```bash
+# 使用调试标志运行技能
+pnpm run cli run ship-safe --debug
+
+# 输出详细日志
+pnpm run cli run ship-safe --verbose
+
+# 测试特定功能
+pnpm run cli run ship-safe --test
+```
+
+### VS Code 调试配置
+
+在 `.vscode/launch.json` 中添加调试配置：
 
 ```json
 {
-  "skills": {
-    "ship-safe": {
-      "testScripts": ["test", "test:unit"],
-      "qualityScripts": ["lint", "typecheck"],
-      "requireRepoTests": true
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Run Skill",
+      "program": "${workspaceFolder}/packages/cli/src/index.ts",
+      "args": ["run", "ship-safe"],
+      "cwd": "${workspaceFolder}",
+      "runtimeArgs": ["--require", "ts-node/register"],
+      "skipFiles": ["<node_internals>/**"]
     }
-  }
+  ]
 }
 ```
 
-### 方式三：CI/CD 集成
+### 日志调试
 
-#### GitHub Actions 示例
+```typescript
+// 在技能代码中添加调试日志
+import { logger } from '@ai-skills/core'
+
+logger.debug('Debug info')
+logger.info('Info message')
+logger.warn('Warning')
+logger.error('Error')
+```
+
+## 📦 部署
+
+### 本地部署
+
+```bash
+# 构建生产版本
+pnpm build
+
+# 全局安装 CLI
+pnpm link --global
+
+# 现在可以全局使用
+ai-skills --version
+ai-skills run ship-safe
+```
+
+### 作为依赖部署
+
+在其他项目中使用：
+
+```bash
+# 安装到你的项目
+pnpm add ai-skills
+```
+
+```typescript
+import { loadAllSkills, runSkill, loadConfig } from 'ai-skills'
+
+// 加载配置
+const config = await loadConfig({ projectPath: process.cwd() })
+
+// 加载技能
+const skills = await loadAllSkills()
+
+// 运行技能
+const result = await runSkill(skills['ship-safe'], {
+  projectPath: process.cwd(),
+  config
+})
+
+console.log('检查结果:', result.passed ? '通过' : '失败')
+```
+
+### CI/CD 集成
+
+#### GitHub Actions
 
 ```yaml
 name: AI Skills Check
@@ -245,7 +307,6 @@ jobs:
       
       - name: Run ship-safe check
         run: pnpm run cli run ship-safe --json > result.json
-        continue-on-error: true
       
       - name: Upload results
         uses: actions/upload-artifact@v3
@@ -254,88 +315,81 @@ jobs:
           path: result.json
 ```
 
-#### Git Hook 集成
+#### Git Hooks
 
 使用 Husky 在提交前自动检查：
 
 ```bash
-# 安装 Husky
 pnpm add -D husky
 npx husky install
-
-# 添加 pre-commit hook
 npx husky add .husky/pre-commit "pnpm run cli run ship-safe"
 ```
 
-## 📚 可用技能
+## ❓ 常见问题
 
-| 技能名称 | 描述 | 状态 | 使用方式 |
-|----------|------|------|----------|
-| `ship-safe` | 发布前安全检查（测试覆盖率、质量检查等） | ✅ 可用 | 命令行运行 |
-| `vue-code-review` | Vue 3 代码审查规范 | 📝 文档可用 | AI 助手读取 |
-| `vue-code-generation` | Vue 3 代码生成规范 | 📝 文档可用 | AI 助手读取 |
-| `frontend-design` | 前端设计规范 | 📝 文档可用 | AI 助手读取 |
+### Q: 技能加载失败？
 
-**状态说明**：
-- ✅ 可用：有完整的可执行代码
-- 📝 文档可用：有规范文档，可供 AI 助手使用
+A: 检查 `skills/` 目录结构是否正确，确保每个技能目录包含 `SKILL.md` 文件。
 
-**提示**：`skills/` 目录会持续扩展，欢迎贡献更多技能！
+### Q: 运行技能时报错？
 
-## 🔍 审查维度
+A: 使用 `--debug` 或 `--verbose` 标志查看详细日志。
 
-### P0 - 红线规则（必须修复）
-- TypeScript 类型安全（禁止 any）
-- 模板规范（禁止复杂逻辑）
-- 组件基础规范（defineOptions、Props 默认值）
-- 安全检查（XSS、注入、路径遍历等）
-- 运行时异常防护（空值处理、错误处理）
+### Q: 如何创建自定义技能？
 
-### P1 - 规范规则（应该修复）
-- 文件结构与命名规范
-- SOLID 原则检查
-- 代码异味检测
-- 性能优化建议
+A: 参考「扩展技能」章节，支持两种方式：
+1. 添加技能文档（SKILL.md）
+2. 开发可执行技能（TypeScript）
 
-### P2 - 建议规则（可选优化）
-- 调试代码清理
-- 可访问性（a11y）检查
-- 测试覆盖率
+### Q: 配置文件在哪里？
+
+A: 配置文件支持多种格式：
+- `ai-skills.config.json`
+- `ai-skills.config.js`
+- `ai-skills.config.mjs`
+- `ai-skills.config.cjs`
+
+## � 扩展技能
+
+### 方式一：添加技能文档
+
+在 `skills/` 目录创建新的技能文档：
+
+```
+skills/
+└── my-custom-skill/
+    └── SKILL.md  # 你的规范文档
+```
+
+### 方式二：开发可执行技能
+
+在 `packages/skills/` 创建新的技能包：
+
+```
+packages/skills/
+└── my-executable-skill/
+    ├── src/
+    │   └── index.ts
+    └── package.json
+```
+
+## 📦 内置技能
+
+项目提供了一个完整的示例技能 `ship-safe`，用于发布前安全检查：
+
+- 检测测试脚本是否可用
+- 运行 lint、typecheck 等质量检查
+- 验证变更文件是否有对应测试
 
 ## 🎯 核心价值
 
 | 价值点 | 说明 |
 |--------|------|
-| **规范落地** | 让规范文档真正被执行，而非摆设 |
-| **效率提升** | AI 自动检查，减少人工审查时间 |
-| **质量保障** | 发布前自动检查，降低线上问题 |
-| **团队协作** | 新成员快速上手，保持代码一致性 |
-| **灵活扩展** | 支持自定义技能，适应不同技术栈 |
-
-## 🚀 快速开始
-
-### 5 分钟上手指南
-
-**1. 作为 AI 助手使用（推荐新手）**
-
-```bash
-# 无需安装，直接使用
-# 在 AI 对话中：
-"请读取 skills/vue-code-review/SKILL.md，帮我审查这段代码..."
-```
-
-**2. 作为命令行工具使用**
-
-```bash
-# 克隆并安装
-git clone https://github.com/your-username/ai-skills.git
-cd ai-skills
-pnpm install
-pnpm build
-
-# 运行检查
-pnpm run cli run ship-safe
-```
+| **规范文档化** | 将团队规范编写成 AI 可读的技能文档 |
+| **技能引擎化** | 提供加载和执行技能的核心框架 |
+| **高度可扩展** | 支持自定义技能，适应任意场景 |
+| **开箱即用** | 内置完整示例技能，可直接使用 |
+| **CI/CD 友好** | 支持命令行和 JSON 输出，易于集成 |
 
 ## 📄 许可证
 

@@ -51,6 +51,86 @@ function formatCheckStatus(check: SkillCheck) {
   }
 }
 
+function formatDuration(durationMs: number): string {
+  if (durationMs < 1000) return `${durationMs}ms`
+  if (durationMs < 60000) return `${(durationMs / 1000).toFixed(1)}s`
+  return `${Math.floor(durationMs / 60000)}m ${((durationMs % 60000) / 1000).toFixed(0)}s`
+}
+
+function extractErrorMessage(output: string): string {
+  const errors: string[] = []
+  
+  const referenceMatch = output.match(/ReferenceError:\s*([^\n]+)/)
+  if (referenceMatch) errors.push(referenceMatch[1])
+  
+  const typeErrorMatch = output.match(/TypeError:\s*([^\n]+)/)
+  if (typeErrorMatch) errors.push(typeErrorMatch[1])
+  
+  const syntaxErrorMatch = output.match(/SyntaxError:\s*([^\n]+)/)
+  if (syntaxErrorMatch) errors.push(syntaxErrorMatch[1])
+  
+  const babelMatch = output.match(/\[BABEL\].*?max of (\d+KB)/)
+  if (babelMatch) errors.push(`Babel 编译警告：文件体积超过 ${babelMatch[1]}`)
+  
+  const deprecatedMatch = output.match(/deprecated\.\s*([^\n]+)/i)
+  if (deprecatedMatch) errors.push(`已弃用：${deprecatedMatch[1]}`)
+  
+  if (errors.length > 0) {
+    return errors.join('; ')
+  }
+  
+  return output.slice(0, 200)
+}
+
+function parseIssueDetail(issue: string): { type: string; message: string; file?: string; line?: number } {
+  const testMatch = issue.match(/(test:\w+)\s+failed/i)
+  if (testMatch) {
+    const output = issue.split('Output:').pop()?.trim() || issue
+    const fileMatch = output.match(/([\w./-]+\.(test|spec)\.[jt]sx?)/i)
+    const lineMatch = output.match(/:(\d+):\d+/)
+    return {
+      type: testMatch[1],
+      message: extractErrorMessage(output),
+      file: fileMatch?.[1],
+      line: lineMatch ? parseInt(lineMatch[1]) : undefined,
+    }
+  }
+
+  const lintMatch = issue.match(/(lint)\s+failed/i)
+  if (lintMatch) {
+    const output = issue.split('Output:').pop()?.trim() || issue
+    return { type: 'lint', message: extractErrorMessage(output) }
+  }
+
+  const buildMatch = issue.match(/(build)\s+failed/i)
+  if (buildMatch) {
+    const output = issue.split('Output:').pop()?.trim() || issue
+    return { type: 'build', message: extractErrorMessage(output) }
+  }
+
+  return { type: 'unknown', message: issue.slice(0, 200) }
+}
+
+function wrapMessage(message: string, maxLength: number = 80): string[] {
+  const lines: string[] = []
+  const trimmed = message.replace(/\s+/g, ' ').trim()
+  
+  let currentLine = ''
+  const words = trimmed.split(' ')
+  
+  for (const word of words) {
+    if (currentLine.length + word.length + 1 <= maxLength) {
+      currentLine = currentLine ? `${currentLine} ${word}` : word
+    } else {
+      if (currentLine) lines.push(currentLine)
+      currentLine = word
+    }
+  }
+  
+  if (currentLine) lines.push(currentLine)
+  return lines
+}
+
 function printSkillReport(skill: Skill, result: SkillResult, ctx: SkillContext) {
   const heading = colorize(`${ANSI.bold}${skill.name}${ANSI.reset}`, ANSI.bold)
 
@@ -65,7 +145,7 @@ function printSkillReport(skill: Skill, result: SkillResult, ctx: SkillContext) 
   }
 
   if (typeof result.durationMs === 'number') {
-    console.log(formatMetaLine('Time', `${result.durationMs}ms`))
+    console.log(formatMetaLine('Time', formatDuration(result.durationMs)))
   }
 
   if (result.summary) {
@@ -75,30 +155,64 @@ function printSkillReport(skill: Skill, result: SkillResult, ctx: SkillContext) 
   if (result.checks?.length) {
     console.log(`\n${colorize('Checks', ANSI.bold)}`)
     result.checks.forEach(check => {
-      const duration = typeof check.durationMs === 'number' ? ` (${check.durationMs}ms)` : ''
-      console.log(`- ${check.label.padEnd(20)} ${formatCheckStatus(check)}${duration}`)
+      const duration = typeof check.durationMs === 'number' ? ` (${formatDuration(check.durationMs)})` : ''
+      const status = formatCheckStatus(check)
+      console.log(`- ${check.label.padEnd(20)} ${status}${duration}`)
       if (check.details) {
-        console.log(`  ${check.details}`)
+        const lines = check.details.split('\n')
+        lines.forEach((line, idx) => {
+          if (idx === 0) {
+            console.log(`  ${line}`)
+          } else {
+            console.log(`    ${line}`)
+          }
+        })
       }
     })
   }
 
   if (result.issues.length === 0) {
-    console.log(`\n${colorize('No issues found.', ANSI.green)}`)
+    console.log(`\n${colorize('✅ No issues found.', ANSI.green)}`)
   } else {
-    console.log(`\n${colorize('Issues', ANSI.bold)}`)
+    console.log(`\n${colorize('❌ Issues Found', ANSI.bold)}`)
+    console.log(colorize('─'.repeat(60), ANSI.dim))
+    
     result.issues.forEach((issue, index) => {
-      console.log(`${String(index + 1).padStart(2, ' ')}. ${issue}`)
+      const parsed = parseIssueDetail(issue)
+      const typeColor = parsed.type === 'test' ? ANSI.yellow : 
+                        parsed.type === 'lint' ? ANSI.cyan : 
+                        parsed.type === 'build' ? ANSI.red : ANSI.dim
+      
+      console.log(`\n${String(index + 1).padStart(2, ' ')}. ${colorize(`[${parsed.type.toUpperCase()}]`, typeColor)}`)
+      
+      const messageLines = wrapMessage(parsed.message, 70)
+      messageLines.forEach((line, idx) => {
+        if (idx === 0) {
+          console.log(`   └─ ${line}`)
+        } else {
+          console.log(`      ${line}`)
+        }
+      })
+      
+      if (parsed.file) {
+        const lineInfo = parsed.line ? `:${parsed.line}` : ''
+        console.log(`   📁 ${colorize(`${parsed.file}${lineInfo}`, ANSI.dim)}`)
+      }
     })
   }
 
   if (result.suggestions?.length) {
-    console.log(`\n${colorize('Suggestions', ANSI.bold)}`)
+    console.log(`\n${colorize('💡 Suggestions', ANSI.bold)}`)
+    console.log(colorize('─'.repeat(60), ANSI.dim))
     result.suggestions.forEach((suggestion, index) => {
-      const detail = suggestion.detail ? `: ${suggestion.detail}` : ''
-      console.log(`${String(index + 1).padStart(2, ' ')}. ${suggestion.title}${detail}`)
+      console.log(`\n${String(index + 1).padStart(2, ' ')}. ${colorize(suggestion.title, ANSI.green)}`)
+      if (suggestion.detail) {
+        console.log(`   └─ ${suggestion.detail}`)
+      }
     })
   }
+
+  console.log('')
 }
 
 export async function runSkill(skill: Skill, ctx?: Partial<SkillContext>, options?: RunSkillOptions) {
