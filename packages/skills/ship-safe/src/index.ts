@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { Skill, SkillContext, SkillResult } from '@ai-skills/core'
+import type { ShipSafeSkillConfig, Skill, SkillCheck, SkillContext, SkillResult, SkillSuggestion } from '@ai-skills/core'
 
 const execFileAsync = promisify(execFile)
 const COMMAND_TIMEOUT_MS = 5 * 60 * 1000
@@ -32,7 +32,25 @@ interface CommandExecutionResult {
   stderr: string
 }
 
+interface ExecutedValidation {
+  command: ValidationCommand
+  ok: boolean
+  output?: string
+}
+
 type PackageManager = 'pnpm' | 'npm' | 'yarn' | 'bun'
+
+function getShipSafeConfig(ctx: SkillContext): Required<ShipSafeSkillConfig> {
+  const configured = ctx.config?.skills?.['ship-safe'] ?? {}
+
+  return {
+    testScripts: configured.testScripts ?? ['test', 'test:unit', 'test:integration', 'test:e2e'],
+    qualityScripts: configured.qualityScripts ?? ['lint', 'typecheck', 'build', 'check', 'verify'],
+    requireRepoTests: configured.requireRepoTests ?? true,
+    requireStagedTestFiles: configured.requireStagedTestFiles ?? true,
+    requireMatchingTestsForChangedFiles: configured.requireMatchingTestsForChangedFiles ?? true,
+  }
+}
 
 function pathExists(targetPath: string) {
   return fs.existsSync(targetPath)
@@ -85,11 +103,10 @@ function makeRunScriptCommand(packageManager: PackageManager, scriptName: string
 function buildValidationCommands(
   scripts: Record<string, string>,
   packageManager: PackageManager,
+  config: Required<ShipSafeSkillConfig>,
 ): ValidationCommand[] {
   const commands: ValidationCommand[] = []
   const seen = new Set<string>()
-  const preferredTestScripts = ['test', 'test:unit', 'test:integration', 'test:e2e']
-  const preferredQualityScripts = ['lint', 'typecheck', 'build', 'check', 'verify']
 
   const addScript = (scriptName: string, kind: ValidationCommand['kind']) => {
     if (!scripts[scriptName] || seen.has(scriptName)) {
@@ -104,8 +121,8 @@ function buildValidationCommands(
     })
   }
 
-  preferredTestScripts.forEach(scriptName => addScript(scriptName, 'test'))
-  preferredQualityScripts.forEach(scriptName => addScript(scriptName, 'quality'))
+  config.testScripts.forEach(scriptName => addScript(scriptName, 'test'))
+  config.qualityScripts.forEach(scriptName => addScript(scriptName, 'quality'))
 
   return commands
 }
@@ -141,12 +158,12 @@ async function runCommand(command: string[], cwd: string): Promise<CommandExecut
   }
 }
 
-async function runGitCommand(cwd: string, args: string[]) {
-  return runCommand(['git', ...args], cwd)
+async function runGitCommand(projectPath: string, args: string[]) {
+  return runCommand(['git', ...args], projectPath)
 }
 
-async function getStagedFiles(cwd: string) {
-  const result = await runGitCommand(cwd, ['diff', '--cached', '--name-only', '--diff-filter=ACMR'])
+async function getStagedFiles(projectPath: string) {
+  const result = await runGitCommand(projectPath, ['diff', '--cached', '--name-only', '--diff-filter=ACMR'])
 
   if (!result.ok) {
     return []
@@ -208,9 +225,9 @@ function extractTestStem(filePath: string) {
   return removeSourceExtension(normalized).replace(/\.(test|spec)$/, '')
 }
 
-function findRepoTests(cwd: string) {
-  return walkFiles(cwd)
-    .map(filePath => normalizePath(path.relative(cwd, filePath)))
+function findRepoTests(projectPath: string) {
+  return walkFiles(projectPath)
+    .map(filePath => normalizePath(path.relative(projectPath, filePath)))
     .filter(isTestFile)
 }
 
@@ -242,12 +259,80 @@ function createFailureResult(issues: string[], score: number): SkillResult {
   return {
     passed: false,
     score: clampScore(score),
+    summary: 'ship-safe could not complete the required commit-time validation.',
     issues,
+    suggestions: [
+      {
+        title: 'Add runnable project scripts',
+        detail: 'Define test, lint, and typecheck scripts in package.json so ship-safe can execute them.',
+      },
+    ],
+    checks: [
+      {
+        id: 'project-setup',
+        label: 'Project setup',
+        status: 'fail',
+        details: issues[0],
+      },
+    ],
   }
 }
 
+function createCheck(id: string, label: string, status: SkillCheck['status'], details?: string, durationMs?: number, metadata?: Record<string, unknown>): SkillCheck {
+  return {
+    id,
+    label,
+    status,
+    details,
+    durationMs,
+    metadata,
+  }
+}
+
+function createSuggestions(options: {
+  missingTestScript: boolean
+  missingRepoTests: boolean
+  missingStagedTests: boolean
+  untestedSources: string[]
+  failedCommands: ExecutedValidation[]
+}): SkillSuggestion[] {
+  const suggestions: SkillSuggestion[] = []
+
+  if (options.missingTestScript) {
+    suggestions.push({
+      title: 'Add a test script',
+      detail: 'Expose scripts like "test" or "test:unit" in package.json.',
+    })
+  }
+
+  if (options.missingRepoTests) {
+    suggestions.push({
+      title: 'Create baseline automated tests',
+      detail: 'Add at least one repository test so ship-safe can validate coverage signals.',
+    })
+  }
+
+  if (options.missingStagedTests || options.untestedSources.length > 0) {
+    suggestions.push({
+      title: 'Ship source changes with matching tests',
+      detail: 'Stage related test files for the changed source modules before committing.',
+    })
+  }
+
+  if (options.failedCommands.length > 0) {
+    suggestions.push({
+      title: 'Fix failing validation commands',
+      detail: options.failedCommands.map(result => result.command.name).join(', '),
+    })
+  }
+
+  return suggestions
+}
+
 async function runShipSafe(ctx: SkillContext): Promise<SkillResult> {
-  const packageJson = readPackageJson(ctx.cwd)
+  const startedAt = Date.now()
+  const config = getShipSafeConfig(ctx)
+  const packageJson = readPackageJson(ctx.projectPath)
 
   if (!packageJson?.scripts) {
     return createFailureResult(
@@ -256,38 +341,90 @@ async function runShipSafe(ctx: SkillContext): Promise<SkillResult> {
     )
   }
 
-  const packageManager = detectPackageManager(ctx.cwd)
-  const commands = buildValidationCommands(packageJson.scripts, packageManager)
+  const packageManager = detectPackageManager(ctx.projectPath)
+  const commands = buildValidationCommands(packageJson.scripts, packageManager, config)
   const issues: string[] = []
-  const repoTests = findRepoTests(ctx.cwd)
-  const stagedFiles = await getStagedFiles(ctx.cwd)
+  const repoTests = findRepoTests(ctx.projectPath)
+  const changedFiles = ctx.changedFiles && ctx.changedFiles.length > 0
+    ? ctx.changedFiles
+    : await getStagedFiles(ctx.projectPath)
+  const stagedFiles = changedFiles.map(normalizePath)
   const stagedSourceFiles = stagedFiles.filter(isSourceFile)
   const stagedTestFiles = stagedFiles.filter(isTestFile)
+  const checks: SkillCheck[] = []
+  const missingTestScript = !commands.some(command => command.kind === 'test')
+  const missingRepoTests = config.requireRepoTests && repoTests.length === 0
+  const missingStagedTests = config.requireStagedTestFiles && stagedSourceFiles.length > 0 && stagedTestFiles.length === 0
 
-  if (!commands.some(command => command.kind === 'test')) {
+  if (missingTestScript) {
     issues.push('No runnable test script found. Add scripts like "test", "test:unit", or "test:integration".')
   }
 
-  if (repoTests.length === 0) {
+  if (missingRepoTests) {
     issues.push('No test files were found in the repository.')
   }
 
-  if (stagedSourceFiles.length > 0 && stagedTestFiles.length === 0) {
+  if (missingStagedTests) {
     issues.push('Source files are staged but no test files are staged with them.')
   }
 
-  if (stagedSourceFiles.length > 0 && repoTests.length > 0) {
-    const untestedSources = findUntestedSources(stagedSourceFiles, repoTests)
+  const untestedSources = config.requireMatchingTestsForChangedFiles && stagedSourceFiles.length > 0 && repoTests.length > 0
+    ? findUntestedSources(stagedSourceFiles, repoTests)
+    : []
 
+  if (stagedSourceFiles.length > 0 && repoTests.length > 0) {
     if (untestedSources.length > 0) {
       issues.push(`No related test file found for: ${untestedSources.join(', ')}`)
     }
   }
 
-  const commandFailures: string[] = []
+  checks.push(
+    createCheck(
+      'test-script',
+      'Test script available',
+      missingTestScript ? 'fail' : 'pass',
+      missingTestScript ? 'No runnable test script found in package.json.' : `Detected ${commands.filter(command => command.kind === 'test').length} test script(s).`,
+      undefined,
+      { commandCount: commands.length },
+    ),
+  )
+  checks.push(
+    createCheck(
+      'repo-tests',
+      'Repository tests',
+      missingRepoTests ? 'fail' : 'pass',
+      missingRepoTests ? 'No test files were found in the repository.' : `Found ${repoTests.length} test file(s).`,
+      undefined,
+      { repoTests: repoTests.length },
+    ),
+  )
+  if (stagedSourceFiles.length > 0) {
+    checks.push(
+      createCheck(
+        'changed-files-tests',
+        'Changed files covered',
+        missingStagedTests || untestedSources.length > 0 ? 'warn' : 'pass',
+        missingStagedTests
+          ? 'Source changes are staged without staged tests.'
+          : untestedSources.length > 0
+            ? `Missing related tests for: ${untestedSources.join(', ')}`
+            : 'Changed source files have matching tests.',
+        undefined,
+        {
+          changedSourceFiles: stagedSourceFiles.length,
+          stagedTestFiles: stagedTestFiles.length,
+          requireMatchingTestsForChangedFiles: config.requireMatchingTestsForChangedFiles,
+        },
+      ),
+    )
+  }
+
+  const executedValidations: ExecutedValidation[] = []
 
   for (const command of commands) {
-    const result = await runCommand(command.command, ctx.cwd)
+    const commandStartedAt = Date.now()
+    const result = await runCommand(command.command, ctx.projectPath)
+    const durationMs = Date.now() - commandStartedAt
 
     if (!result.ok) {
       const output = [result.stderr, result.stdout]
@@ -296,26 +433,78 @@ async function runShipSafe(ctx: SkillContext): Promise<SkillResult> {
         .trim()
         .slice(0, 400)
 
-      commandFailures.push(
-        `${command.name} failed.${output ? ` Output: ${output.replace(/\s+/g, ' ')}` : ''}`,
+      executedValidations.push({
+        command,
+        ok: false,
+        output: output.replace(/\s+/g, ' '),
+      })
+      checks.push(
+        createCheck(
+          `command:${command.name}`,
+          `Run ${command.name}`,
+          'fail',
+          output ? output.replace(/\s+/g, ' ') : `${command.name} failed.`,
+          durationMs,
+        ),
       )
+      continue
     }
+
+    executedValidations.push({
+      command,
+      ok: true,
+    })
+    checks.push(
+      createCheck(
+        `command:${command.name}`,
+        `Run ${command.name}`,
+        'pass',
+        `${command.name} completed successfully.`,
+        durationMs,
+      ),
+    )
   }
 
+  const failedCommands = executedValidations.filter(result => !result.ok)
+  const commandFailures = failedCommands.map(
+    result => `${result.command.name} failed.${result.output ? ` Output: ${result.output}` : ''}`,
+  )
   issues.push(...commandFailures)
 
   const score =
     100 -
-    (commands.some(command => command.kind === 'test') ? 0 : 30) -
-    (repoTests.length > 0 ? 0 : 20) -
-    (stagedSourceFiles.length > 0 && stagedTestFiles.length === 0 ? 15 : 0) -
-    Math.min(findUntestedSources(stagedSourceFiles, repoTests).length * 10, 30) -
+    (missingTestScript ? 30 : 0) -
+    (missingRepoTests ? 20 : 0) -
+    (missingStagedTests ? 15 : 0) -
+    Math.min(untestedSources.length * 10, 30) -
     Math.min(commandFailures.length * 25, 50)
+
+  const summary = issues.length === 0
+    ? 'All detected commit-time checks passed. This change looks safe to ship.'
+    : `ship-safe found ${issues.length} issue(s) across test readiness and validation commands.`
+  const durationMs = Date.now() - startedAt
 
   return {
     passed: issues.length === 0,
     score: clampScore(score),
+    summary,
     issues,
+    suggestions: createSuggestions({
+      missingTestScript,
+      missingRepoTests,
+      missingStagedTests,
+      untestedSources,
+      failedCommands,
+    }),
+    checks,
+    metadata: {
+      packageManager,
+        changedFiles: stagedFiles.length,
+        repoTests: repoTests.length,
+        validationCommands: commands.map(command => command.name),
+        config,
+      },
+    durationMs,
   }
 }
 
@@ -329,6 +518,7 @@ export const __internals = {
   buildValidationCommands,
   detectPackageManager,
   findUntestedSources,
+  getShipSafeConfig,
   hasMatchingTest,
   isSourceFile,
   isTestFile,

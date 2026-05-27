@@ -6,29 +6,23 @@ export async function loadAllSkills() {
 
   const skillsDir = path.join(process.cwd(), "packages/skills");
 
-  console.log("👉 scanning:", skillsDir);
-
   if (!fs.existsSync(skillsDir)) {
     console.warn("❌ skills directory not found");
     return skills;
   }
 
-  const dirs = fs.readdirSync(skillsDir);
+  const dirs = fs.readdirSync(skillsDir).sort();
 
   for (const dir of dirs) {
     const pkgPath = path.join(skillsDir, dir);
     const pkgJsonPath = path.join(pkgPath, "package.json");
     const entry = path.join(pkgPath, "dist/index.js");
 
-    console.log("👉 checking:", dir);
-
     if (!fs.existsSync(pkgJsonPath)) {
-      console.warn("skip: no package.json");
       continue;
     }
 
     if (!fs.existsSync(entry)) {
-      console.warn("skip: not built");
       continue;
     }
 
@@ -55,13 +49,10 @@ export async function loadAllSkills() {
       }
 
       skills[skill.name] = skill;
-      console.log("✅ loaded:", skill.name);
     } catch (err) {
       console.error("❌ import failed:", err);
     }
   }
-
-  console.log("👉 loaded skills:", Object.keys(skills));
 
   return skills;
 }

@@ -9,23 +9,19 @@ const path_1 = __importDefault(require("path"));
 async function loadAllSkills() {
     const skills = {};
     const skillsDir = path_1.default.join(process.cwd(), "packages/skills");
-    console.log("👉 scanning:", skillsDir);
     if (!fs_1.default.existsSync(skillsDir)) {
         console.warn("❌ skills directory not found");
         return skills;
     }
-    const dirs = fs_1.default.readdirSync(skillsDir);
+    const dirs = fs_1.default.readdirSync(skillsDir).sort();
     for (const dir of dirs) {
         const pkgPath = path_1.default.join(skillsDir, dir);
         const pkgJsonPath = path_1.default.join(pkgPath, "package.json");
         const entry = path_1.default.join(pkgPath, "dist/index.js");
-        console.log("👉 checking:", dir);
         if (!fs_1.default.existsSync(pkgJsonPath)) {
-            console.warn("skip: no package.json");
             continue;
         }
         if (!fs_1.default.existsSync(entry)) {
-            console.warn("skip: not built");
             continue;
         }
         try {
@@ -44,12 +40,10 @@ async function loadAllSkills() {
                 continue;
             }
             skills[skill.name] = skill;
-            console.log("✅ loaded:", skill.name);
         }
         catch (err) {
             console.error("❌ import failed:", err);
         }
     }
-    console.log("👉 loaded skills:", Object.keys(skills));
     return skills;
 }
