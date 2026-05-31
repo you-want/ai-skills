@@ -1,0 +1,21 @@
+{
+  "name": "example-skill",
+  "version": "1.0.0",
+  "description": "技能模板示例",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w"
+  },
+  "keywords": [
+    "ai-skill"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

@@ -1,133 +1,33 @@
 # AI Skills Engine
 
-一个 **可扩展的 AI 技能引擎**，让 AI 助手理解并执行你的团队规范。
+一个 **可扩展的 AI 技能引擎**，让你轻松管理、安装和运行 AI 技能，统一团队规范。
 
-## 🎯 项目简介
+## 🤔 什么是 AI Skills Engine？
 
-AI Skills Engine 是一个技能引擎框架，提供：
+想象一下，你可以把各种代码检查、规范审查、自动化任务都封装成一个「技能」，然后：
 
-- � **技能加载器**: 自动发现和加载 `skills/` 目录中的技能文档
-- ⚙️ **技能运行器**: 执行技能并生成结构化的检查报告
-- 🛠️ **命令行工具**: 支持 CI/CD 集成和自动化检查
-- 📦 **技能开发框架**: 轻松创建新的可执行技能
+- 用一行命令安装技能
+- 一键运行技能检查项目
+- 技能可以是简单的 markdown 文档，也可以是强大的可执行程序
+- 团队成员共享同一套技能，保证代码质量一致
 
-**核心思路**：将团队规范编写成 AI 可读的 `SKILL.md` 文档，引擎负责加载和执行，让 AI 助手根据规范工作。
+这就是 **AI Skills Engine**！
 
-```
-skills/ (你的技能仓库)
-    ↓
-技能引擎加载
-    ↓
-AI 助手根据规范工作
-    ↓
-符合团队标准的产出
-```
+## ✨ 核心特性
 
-## 📁 项目结构
+| 特性 | 说明 |
+|------|------|
+| 📦 **技能管理** | 安装、移除、更新、列出所有技能 |
+| 🌍 **技能远程化** | 从 GitHub/Git 仓库安装，也可以本地安装 |
+| � **多目录加载** | 自动加载项目本地、全局、内置技能 |
+| 📝 **两种技能类型** | 支持文档型技能（SKILL.md）和可执行技能（TypeScript） |
+| ⚙️ **Install 钩子** | 自动执行 npm install、build 等命令 |
+| 🎯 **即装即用** | 安装后立即可用，无需配置 |
+| 📊 **结构化报告** | 运行技能后生成详细的检查报告 |
 
-```
-ai-skills/
-├── packages/
-│   ├── cli/              # 命令行接口
-│   ├── core/             # 技能引擎核心
-│   │   ├── load-skills.ts # 技能加载器
-│   │   ├── run.ts        # 技能运行器
-│   │   ├── config.ts     # 配置管理
-│   │   └── types.ts      # 类型定义
-│   └── skills/
-│       └── ship-safe/    # 内置技能示例
-├── skills/               # 技能仓库（你的规范文档）
-└── configs/              # 配置文件
-```
+## � 5 分钟快速上手
 
-## ✨ 核心能力
-
-### 1. 技能加载器 (`load-skills.ts`)
-
-自动扫描 `skills/` 目录，发现并加载所有技能文档。
-
-```typescript
-import { loadAllSkills } from '@ai-skills/core'
-
-// 加载所有技能
-const skills = await loadAllSkills()
-
-// 获取技能列表
-for (const skill of Object.values(skills)) {
-  console.log(skill.name, skill.description)
-}
-```
-
-### 2. 技能运行器 (`run.ts`)
-
-执行技能并生成结构化的检查报告。
-
-```typescript
-import { runSkill } from '@ai-skills/core'
-
-// 运行技能
-const result = await runSkill(skill, context, {
-  output: 'text' // 或 'silent'
-})
-
-// 检查结果
-console.log(result.passed)   // 是否通过
-console.log(result.score)    // 评分 0-100
-console.log(result.issues)    // 问题列表
-console.log(result.suggestions) // 建议列表
-```
-
-### 3. 命令行工具 (`cli`)
-
-提供交互式命令行界面。
-
-```bash
-# 查看所有可用技能
-ai-skills list
-
-# 运行特定技能
-ai-skills run <skill-name>
-
-# 指定项目路径
-ai-skills run <skill-name> --project /path/to/project
-
-# JSON 格式输出
-ai-skills run <skill-name> --json
-```
-
-### 4. 技能开发框架
-
-创建新的可执行技能非常简单：
-
-```typescript
-import type { Skill, SkillContext, SkillResult } from '@ai-skills/core'
-
-const mySkill: Skill = {
-  name: 'my-skill',
-  description: '我的自定义技能',
-  run: async (ctx: SkillContext): Promise<SkillResult> => {
-    // 实现技能逻辑
-    return {
-      passed: true,
-      score: 100,
-      summary: '检查完成',
-      issues: [],
-      suggestions: []
-    }
-  }
-}
-
-export default mySkill
-```
-
-## 🚀 快速开始
-
-### 环境要求
-
-- Node.js >= 18.x
-- pnpm >= 8.x
-
-### 安装
+### 1. 构建项目
 
 ```bash
 # 克隆项目
@@ -141,140 +41,320 @@ pnpm install
 pnpm build
 ```
 
-### 基本使用
+### 2. 查看已安装的技能
 
 ```bash
-# 查看帮助
-pnpm run cli help
-
-# 列出所有可用技能
 pnpm run cli list
+```
 
+你会看到类似这样的输出：
+
+```
+已安装的技能:
+
+  ✅ vue-code-review [本地]
+     描述: Vue 3 前端代码审查与生成规范...
+     路径: ~/you-want/ai-skills/.ai-skills/skills/vue-code-review
+     安装时间: 2026/5/31 19:00:00
+```
+
+### 3. 安装新技能
+
+从本地路径安装：
+
+```bash
+pnpm run cli add /path/to/your/skill --local
+```
+
+或者使用我们提供的模板：
+
+```bash
+pnpm run cli add /Users/rain9/you-want/ai-skills/templates/skill-template --local
+```
+
+安装成功后，会自动执行 install 钩子（npm install、npm run build）。
+
+### 4. 运行技能
+
+```bash
+pnpm run cli run vue-code-review --project /path/to/your/project
+```
+
+你会看到详细的检查报告：
+
+```
+vue-code-review
+───────────────
+Status   🟢 PASS
+Score    100/100
+Project  /Users/rain9/you-want/ai-skills
+
+文档技能 vue-code-review 已加载
+
+✅ No issues found.
+```
+
+### 5. 管理技能
+
+```bash
+# 更新所有技能
+pnpm run cli update
+
+# 移除技能
+pnpm run cli remove skill-name
+
+# 再次查看技能列表
+pnpm run cli list
+```
+
+## 📖 完整命令手册
+
+### `ai-skills list` - 列出所有技能
+
+显示所有已安装的技能，包括：
+- 技能名称
+- 范围（本地/全局）
+- 版本号
+- 描述
+- 安装路径
+- 安装时间
+- 标签
+
+```bash
+pnpm run cli list
+```
+
+### `ai-skills add <repo> [--local]` - 安装技能
+
+安装新技能。
+
+```bash
+# 从本地路径安装
+pnpm run cli add /path/to/skill --local
+
+# 从 Git 仓库安装（待实现）
+pnpm run cli add https://github.com/user/skill.git
+```
+
+**参数说明**：
+- `repo`: 技能仓库路径或 Git URL
+- `--local`: 表示安装到项目本地的 `.ai-skills/skills/`（默认安装到全局 `~/.ai-skills/skills/`）
+
+### `ai-skills update` - 更新技能
+
+更新所有已安装的技能。
+
+```bash
+pnpm run cli update
+```
+
+本地技能会跳过更新，远程技能会尝试拉取最新代码。
+
+### `ai-skills remove <name>` - 移除技能
+
+移除已安装的技能。
+
+```bash
+pnpm run cli remove skill-name
+```
+
+### `ai-skills run <name> [--project <path>] [--json]` - 运行技能
+
+运行指定的技能。
+
+```bash
 # 运行技能
-pnpm run cli run ship-safe
+pnpm run cli run skill-name
 
 # 指定项目路径
-pnpm run cli run ship-safe --project /path/to/your/project
+pnpm run cli run skill-name --project /path/to/project
+
+# JSON 格式输出
+pnpm run cli run skill-name --json
 ```
 
-### 集成到项目
+## 📦 两种技能类型
 
-在你的项目中引用 ai-skills 引擎：
+### 1. 文档型技能（SKILL.md）
+
+最简单的技能形式，只需创建一个包含 `SKILL.md` 的目录：
+
+```
+my-skill/
+└── SKILL.md
+```
+
+`SKILL.md` 示例：
+
+```markdown
+---
+name: my-skill
+version: 1.0.0
+description: 我的技能描述
+author: Your Name
+tags: [tag1, tag2]
+---
+
+# 我的技能
+
+这是技能的具体内容...
+```
+
+### 2. 可执行技能（TypeScript）
+
+功能更强大的技能，使用 TypeScript 编写：
+
+```
+my-skill/
+├── SKILL.md
+├── package.json
+└── src/
+    └── index.ts
+```
+
+`src/index.ts` 示例：
 
 ```typescript
-import { loadAllSkills, runSkill } from 'ai-skills'
+import type { Skill, SkillContext, SkillResult } from '@ai-skills/core'
 
-const skills = await loadAllSkills('/path/to/your/skills')
-const result = await runSkill(skills['my-skill'], {
-  projectPath: '/path/to/project'
-})
+const mySkill: Skill = {
+  name: 'my-skill',
+  description: '我的可执行技能',
+  
+  async run(ctx: SkillContext): Promise<SkillResult> {
+    // 你的技能逻辑
+    return {
+      passed: true,
+      score: 100,
+      summary: '检查完成',
+      issues: [],
+      suggestions: [],
+      metadata: {}
+    }
+  }
+}
+
+export default mySkill
 ```
 
-## 🔧 本地调试
-
-### 开发模式
-
-```bash
-# 启动开发模式（监听文件变化自动重建）
-pnpm dev
-
-# 或使用 tsc 监听模式
-pnpm build --watch
-```
-
-### 调试技能
-
-```bash
-# 使用调试标志运行技能
-pnpm run cli run ship-safe --debug
-
-# 输出详细日志
-pnpm run cli run ship-safe --verbose
-
-# 测试特定功能
-pnpm run cli run ship-safe --test
-```
-
-### VS Code 调试配置
-
-在 `.vscode/launch.json` 中添加调试配置：
+`package.json` 示例：
 
 ```json
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "type": "node",
-      "request": "launch",
-      "name": "Run Skill",
-      "program": "${workspaceFolder}/packages/cli/src/index.ts",
-      "args": ["run", "ship-safe"],
-      "cwd": "${workspaceFolder}",
-      "runtimeArgs": ["--require", "ts-node/register"],
-      "skipFiles": ["<node_internals>/**"]
-    }
-  ]
+  "name": "my-skill",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
 }
 ```
 
-### 日志调试
+## 🎯 使用我们的技能模板
 
-```typescript
-// 在技能代码中添加调试日志
-import { logger } from '@ai-skills/core'
-
-logger.debug('Debug info')
-logger.info('Info message')
-logger.warn('Warning')
-logger.error('Error')
-```
-
-## 📦 部署
-
-### 本地部署
+项目提供了完整的技能模板，快速创建新技能：
 
 ```bash
-# 构建生产版本
-pnpm build
+# 复制模板
+cp -r templates/skill-template skills/my-new-skill
 
-# 全局安装 CLI
-pnpm link --global
+# 编辑 SKILL.md，修改名称、描述等
 
-# 现在可以全局使用
-ai-skills --version
-ai-skills run ship-safe
+# 安装技能
+pnpm run cli add /Users/rain9/you-want/ai-skills/skills/my-new-skill --local
 ```
 
-### 作为依赖部署
+## � 技能存储位置
 
-在其他项目中使用：
+AI Skills Engine 按优先级从以下位置加载技能：
+
+| 位置 | 优先级 | 路径 | 说明 |
+|------|--------|------|------|
+| 项目本地 | 1（最高） | `.ai-skills/skills/` | 当前项目的技能 |
+| 全局 | 2 | `~/.ai-skills/skills/` | 所有项目共享的技能 |
+| 内置 | 3（最低） | `packages/skills/` | 引擎内置技能 |
+
+## 🔧 技能元数据（SKILL.md）
+
+在 `SKILL.md` 的 YAML frontmatter 中可以定义：
+
+```yaml
+---
+name: skill-name          # 技能名称（必需）
+version: 1.0.0            # 版本号
+description: 技能描述      # 描述
+author: Your Name         # 作者
+tags: [tag1, tag2]        # 标签
+dependencies:             # 依赖的其他技能
+  - other-skill
+install:                  # 安装后执行的命令
+  - npm install
+  - npm run build
+---
+```
+
+## 🏗️ 项目结构
+
+```
+ai-skills/
+├── packages/
+│   ├── cli/                    # 命令行工具
+│   │   └── src/
+│   │       ├── index.ts        # CLI 入口
+│   │       └── commands/
+│   │           └── skill.ts    # 技能管理命令
+│   ├── core/                   # 核心引擎
+│   │   ├── src/
+│   │   │   ├── load-skills.ts  # 技能加载器
+│   │   │   ├── run.ts          # 技能运行器
+│   │   │   ├── config.ts       # 配置管理
+│   │   │   └── types.ts        # 类型定义
+│   └── skills/
+│       └── ship-safe/          # 内置技能示例
+├── skills/                     # 你的技能仓库
+├── templates/
+│   └── skill-template/         # 技能模板
+├── .ai-skills/
+│   ├── skills/                 # 项目本地安装的技能
+│   └── registry.json           # 技能注册表
+└── package.json
+```
+
+## 🎨 使用场景
+
+### 场景 1：团队代码规范检查
+
+创建一个 `code-review` 技能，包含团队的代码规范，然后在每个项目中安装：
 
 ```bash
-# 安装到你的项目
-pnpm add ai-skills
+# 在项目 A 中安装
+pnpm run cli add /path/to/team/code-review --local
+
+# 运行检查
+pnpm run cli run code-review --project ./src
 ```
 
-```typescript
-import { loadAllSkills, runSkill, loadConfig } from 'ai-skills'
+### 场景 2：发布前安全检查
 
-// 加载配置
-const config = await loadConfig({ projectPath: process.cwd() })
+创建 `ship-safe` 技能，在发布前自动运行 lint、测试等：
 
-// 加载技能
-const skills = await loadAllSkills()
-
-// 运行技能
-const result = await runSkill(skills['ship-safe'], {
-  projectPath: process.cwd(),
-  config
-})
-
-console.log('检查结果:', result.passed ? '通过' : '失败')
+```bash
+# 集成到 CI/CD
+pnpm run cli run ship-safe --json > result.json
 ```
 
-### CI/CD 集成
+### 场景 3：AI 助手提示词管理
 
-#### GitHub Actions
+将各种 AI 提示词封装成技能，方便团队共享和使用。
+
+## 🔗 CI/CD 集成
+
+### GitHub Actions
 
 ```yaml
 name: AI Skills Check
@@ -305,8 +385,11 @@ jobs:
       - name: Build
         run: pnpm build
       
-      - name: Run ship-safe check
-        run: pnpm run cli run ship-safe --json > result.json
+      - name: Install skills
+        run: pnpm run cli add ./skills/code-review --local
+      
+      - name: Run checks
+        run: pnpm run cli run code-review --project ./src --json > result.json
       
       - name: Upload results
         uses: actions/upload-artifact@v3
@@ -315,90 +398,46 @@ jobs:
           path: result.json
 ```
 
-#### Git Hooks
+### Git Hooks
 
 使用 Husky 在提交前自动检查：
 
 ```bash
 pnpm add -D husky
 npx husky install
-npx husky add .husky/pre-commit "pnpm run cli run ship-safe"
+npx husky add .husky/pre-commit "pnpm run cli run code-review"
 ```
 
 ## ❓ 常见问题
 
-### Q: 技能加载失败？
+### Q: 技能安装到哪里了？
 
-A: 检查 `skills/` 目录结构是否正确，确保每个技能目录包含 `SKILL.md` 文件。
-
-### Q: 运行技能时报错？
-
-A: 使用 `--debug` 或 `--verbose` 标志查看详细日志。
+A: 
+- 本地安装：`.ai-skills/skills/`
+- 全局安装：`~/.ai-skills/skills/`
 
 ### Q: 如何创建自定义技能？
 
-A: 参考「扩展技能」章节，支持两种方式：
-1. 添加技能文档（SKILL.md）
-2. 开发可执行技能（TypeScript）
+A: 复制 `templates/skill-template/`，然后修改 `SKILL.md` 和代码。
 
-### Q: 配置文件在哪里？
+### Q: 技能加载失败怎么办？
 
-A: 配置文件支持多种格式：
-- `ai-skills.config.json`
-- `ai-skills.config.js`
-- `ai-skills.config.mjs`
-- `ai-skills.config.cjs`
+A: 检查技能目录是否包含 `SKILL.md` 或 `package.json` + `dist/index.js`。
 
-## � 扩展技能
+### Q: 如何调试技能？
 
-### 方式一：添加技能文档
+A: 使用 `--json` 输出详细信息，或者查看技能的源代码。
 
-在 `skills/` 目录创建新的技能文档：
+### Q: 本地技能和全局技能有什么区别？
 
-```
-skills/
-└── my-custom-skill/
-    └── SKILL.md  # 你的规范文档
-```
-
-### 方式二：开发可执行技能
-
-在 `packages/skills/` 创建新的技能包：
-
-```
-packages/skills/
-└── my-executable-skill/
-    ├── src/
-    │   └── index.ts
-    └── package.json
-```
-
-## 📦 内置技能
-
-项目提供了一个完整的示例技能 `ship-safe`，用于发布前安全检查：
-
-- 检测测试脚本是否可用
-- 运行 lint、typecheck 等质量检查
-- 验证变更文件是否有对应测试
-
-## 🎯 核心价值
-
-| 价值点 | 说明 |
-|--------|------|
-| **规范文档化** | 将团队规范编写成 AI 可读的技能文档 |
-| **技能引擎化** | 提供加载和执行技能的核心框架 |
-| **高度可扩展** | 支持自定义技能，适应任意场景 |
-| **开箱即用** | 内置完整示例技能，可直接使用 |
-| **CI/CD 友好** | 支持命令行和 JSON 输出，易于集成 |
-
-## 📄 许可证
-
-MIT License
+A: 
+- 本地技能：只在当前项目可用，存储在 `.ai-skills/skills/`
+- 全局技能：所有项目都可用，存储在 `~/.ai-skills/skills/`
 
 ## 🤝 贡献
 
 欢迎提交 Issue 和 PR！
 
-## 📧 联系
+## � 许可证
 
-如有问题或建议，欢迎通过 Issues 联系。
+MIT License
